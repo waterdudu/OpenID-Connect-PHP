@@ -390,7 +390,10 @@ class OpenIDConnectClient
         // Convert token params to string format
         $token_params = http_build_query($token_params, null, '&');
 
-        return json_decode($this->fetchURL($token_endpoint, $token_params));
+	$basic_auth = base64_encode($this->clientID.":".$this->clientSecret);
+        $headers = array("Authorization: Basic {$basic_auth}");
+
+        return json_decode($this->fetchURL($token_endpoint, $token_params, $headers));
 
     }
 
