@@ -21,16 +21,28 @@
  *
  */
 
-require "../../autoload.php";
+<?php
 
-$oidc = new OpenIDConnectClient('http://myproviderURL.com/',
-                                'ClientIDHere',
-                                'ClientSecretHere');
+require "./vendor/autoload.php";
 
-$oidc->authenticate();
-$name = $oidc->requestUserInfo('given_name');
+
+// issuer, client_id, client_secret
+$oidc = new OpenIDConnectClient('http://127.0.0.1:5556',
+                                '0FaVkMkVhjiySM3ZdgR5BpYKy91c4QEb1urF6Kqf3sY=@example.dudu.me',
+                                'FkVl5Ym-LDdxuRw6mdg-3M-9YFUB3NjNDd-zx2MxerAxgF3WMM2R3FZaNuB1PpSNAD9N61soZxDhEF3W6sxjx7PdCs6_lSer');
+
+$oidc->addScope(array("openid", "email", "profile"));
+$isAuth = $oidc->authenticate();
+
+
+$access_token = $oidc->getAccessToken();
+
+$email = $oidc->getUserEmail();
+
+$userID = $oidc->getUserID();
 
 ?>
+
 
 <html>
 <head>
@@ -44,9 +56,17 @@ $name = $oidc->requestUserInfo('given_name');
 <body>
 
     <div>
-        Hello <?php echo $name; ?>
+        Hello ~ <b><?php echo $email ?></b><br>
+
+        <b>access token :</b> <?php echo $access_token ?><br>
+        <b>email :</b> <?php echo $email ?><br>
+        <b>user id :</b> <?php echo $userID ?>
+
     </div>
 
 </body>
 </html>
+
+
+
 

@@ -60,7 +60,7 @@ function b64url2b64($base64url) {
     // "Shouldn't" be necessary, but why not
     $padding = strlen($base64url) % 4;
     if ($padding > 0) {
-	$base64url .= str_repeat("=", 4 - $padding);
+    $base64url .= str_repeat("=", 4 - $padding);
     }
     return strtr($base64url, '-_', '+/');
 }
@@ -142,6 +142,11 @@ class OpenIDConnectClient
      */
     private $userInfo = array();
 
+
+    private $userEmail;
+
+    private $userID;
+
     /**
      * @var array holds authentication parameters
      */
@@ -194,26 +199,33 @@ class OpenIDConnectClient
                 throw new OpenIDConnectClientException("Unable to determine state");
             }
 
-	    if (!property_exists($token_json, 'id_token')) {
-		throw new OpenIDConnectClientException("User did not authorize openid scope.");
-	    }
+            if (!property_exists($token_json, 'id_token')) {
+              throw new OpenIDConnectClientException("User did not authorize openid scope.");
+            }
 
             $claims = $this->decodeJWT($token_json->id_token, 1);
 
-	    // Verify the signature
-	    if ($this->canVerifySignatures()) {
-		if (!$this->verifyJWTsignature($token_json->id_token)) {
-		    throw new OpenIDConnectClientException ("Unable to verify signature");
-		}
-	    } else {
-		user_error("Warning: JWT signature verification unavailable.");
-	    }
+
+            // claims:
+            // object(stdClass)#4 (9) { ["aud"]=> string(60) "0FaVkMkVhjiySM3ZdgR5BpYKy91c4QEb1urF6Kqf3sY=@example.dudu.me" ["email"]=> string(14) "tom@x.com" ["email_verified"]=> bool(true) ["exp"]=> float(1456938548) ["iat"]=> float(1456895348) ["iss"]=> string(21) "http://127.0.0.1:5556" ["name"]=> string(0) "" ["nonce"]=> string(32) "8bbea3319ae6845144dcfd502b475eee" ["sub"]=> string(36) "820fd683-50f9-4039-84f9-c79c5d337700" } 
+            
+            // Verify the signature
+            if ($this->canVerifySignatures()) {
+
+                if (!$this->verifyJWTsignature($token_json->id_token)) {
+                    throw new OpenIDConnectClientException ("Unable to verify signature");
+                }
+
+            } else {
+                user_error("Warning: JWT signature verification unavailable.");
+            }
 
             // If this is a valid claim
             if ($this->verifyJWTclaims($claims)) {
 
                 // Clean up the session a little
-                unset($_SESSION['openid_connect_nonce']);
+                if (isset($_SESSION['openid_connect_nonce']))
+                    unset($_SESSION['openid_connect_nonce']);
 
                 // Save the access token
                 $this->accessToken = $token_json->access_token;
@@ -221,6 +233,10 @@ class OpenIDConnectClient
                 // Save the refresh token, if we got one
                 if (isset($token_json->refresh_token)) $this->refreshToken = $token_json->refresh_token;
 
+
+                $this->userEmail = $claims->email;
+
+                $this->userID = $claims->sub;
                 // Success!
                 return true;
 
@@ -264,6 +280,7 @@ class OpenIDConnectClient
         // This is also known as auto "discovery"
         if (!isset($this->providerConfig[$param])) {
             $well_known_config_url = rtrim($this->getProviderURL(),"/") . "/.well-known/openid-configuration";
+
             $value = json_decode($this->fetchURL($well_known_config_url))->{$param};
 
             if ($value) {
@@ -333,6 +350,7 @@ class OpenIDConnectClient
      */
     private function requestAuthorization() {
 
+
         $auth_endpoint = $this->getProviderConfigValue("authorization_endpoint");
         $response_type = "code";
 
@@ -377,6 +395,7 @@ class OpenIDConnectClient
 
         $token_endpoint = $this->getProviderConfigValue("token_endpoint");
 
+        // echo $token_endpoint;
         $grant_type = "authorization_code";
 
         $token_params = array(
@@ -791,6 +810,21 @@ class OpenIDConnectClient
     public function canVerifySignatures() {
       return class_exists('Crypt_RSA');
     }
+
+
+    /**
+     * @return string
+     */
+    public function getUserEmail() {
+        return $this->userEmail;
+    }
+
+    /**
+     * @return string
+     */
+    public function getUserID() {
+        return $this->userID;
+    } 
 
     /**
      * @return string
